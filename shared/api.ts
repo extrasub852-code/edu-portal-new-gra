@@ -18,6 +18,7 @@ export interface Solution {
   id: string;
   title: string;
   description: string;
+  solution?: string; // Optional solution text/details
   author: string;
   category: string;
   tags: string[];
@@ -61,4 +62,85 @@ export interface SearchResponse {
   extractedTags: string[];
   results: ScoredSolution[];
   total: number;
+}
+
+/**
+ * Detailed Use Case data model with problem, solution, tech stack, impact, and examples.
+ */
+export interface UseCaseDetail {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  author: string;
+  category: string;
+  rating: number;
+  popularity: number;
+  dateAdded: string;
+  tags: string[];
+  problem: {
+    statement: string;
+    impact: string;
+  };
+  solution: {
+    overview: string;
+    keyFeatures: string[];
+  };
+  techStack: string[];
+  impact: {
+    metrics: string[];
+    benefits: string[];
+  };
+  exampleImplementation: {
+    overview: string;
+    keyComponents: string[];
+  };
+  relatedUseCases: string[];
+  aiPrompts?: {
+    title: string;
+    prompt: string;
+    description?: string;
+  }[];
+  aiTools?: {
+    id: string;
+    name: string;
+    category: string;
+    description: string;
+    suggestedPrompt?: string;
+    affiliateUrl?: string;
+  }[];
+}
+
+/**
+ * Simplified Use Case for listings and cards.
+ */
+export interface UseCase {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  author: string;
+  category: string;
+  rating: number;
+  popularity: number;
+  dateAdded: string;
+  tags: string[];
+}
+
+/**
+ * Use Case search response with semantic scoring.
+ */
+export interface UseCaseSearchResponse {
+  query: string;
+  results: (UseCase & { score: number; matchedTags: string[] })[];
+  total: number;
+  semanticSearch: boolean;
+}
+
+/**
+ * Use Case suggestions response for autocomplete.
+ */
+export interface UseCaseSuggestionsResponse {
+  suggestions: (UseCase & { score: number })[];
+  query: string;
 }

@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Layout from "@/components/layout/Layout";
 import UseCaseFinder from "@/pages/UseCaseFinder";
+import UseCaseDetail from "@/pages/UseCaseDetail";
 import Courses from "@/pages/Courses";
 import About from "@/pages/About";
 import Contact from "@/pages/Contact";
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/use-case-finder" element={<UseCaseFinder />} />
+            <Route path="/usecase/:slug" element={<UseCaseDetail />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="*" element={<NotFound />} />

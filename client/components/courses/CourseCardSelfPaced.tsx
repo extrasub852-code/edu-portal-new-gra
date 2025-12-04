@@ -13,25 +13,27 @@ export function CourseCardSelfPaced({ course, onContinue }: { course: Course; on
       </div>
       <p className="mb-4 text-sm text-[#003057]/80">{course.description}</p>
 
-      <div className="mb-4">
-        <div className="h-3 w-full rounded-full bg-[#003057]/10">
-          <div
-            className="h-3 rounded-full bg-[#B3A369] transition-all"
-            style={{ width: `${progress}%` }}
-          />
+      {course.progress !== undefined && (
+        <div className="mb-4">
+          <div className="h-3 w-full rounded-full bg-[#003057]/10">
+            <div
+              className="h-3 rounded-full bg-[#B3A369] transition-all"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <div className="mt-2 flex items-center justify-between text-xs text-[#003057]/70">
+            <span>{progress}% complete</span>
+            <span>{course.lastAccess ? new Date(course.lastAccess).toLocaleDateString() : "--"}</span>
+          </div>
         </div>
-        <div className="mt-2 flex items-center justify-between text-xs text-[#003057]/70">
-          <span>{progress}% complete</span>
-          <span>{course.lastAccess ? new Date(course.lastAccess).toLocaleDateString() : "--"}</span>
-        </div>
-      </div>
+      )}
 
       <div className="mt-auto flex items-center justify-end">
         <button
           onClick={() => onContinue?.(course.id)}
           className="rounded-md bg-[#B3A369] px-4 py-2 text-sm font-semibold text-[#003057] shadow-sm hover:bg-[#a4945c]"
         >
-          Continue Learning
+          {course.progress && course.progress > 0 ? "Continue Learning" : "View Course"}
         </button>
       </div>
     </article>
