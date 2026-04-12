@@ -8,6 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+.pnpm-store
 dist
 dist-ssr
 *.local
@@ -31,4 +32,8 @@ dist/server/db/*.db
 *.sw?
 
 .config/
-!.env
+
+# Environment variables
+.env
+.env.local
+.env.*.local

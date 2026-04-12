@@ -1,12 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Filters, FiltersSidebar } from "@/components/FiltersSidebar";
-import { UseCaseCard } from "@/components/UseCaseCard";
-import { AIToolCard } from "@/components/AIToolCard";
-import { SearchSuggestions } from "@/components/SearchSuggestions";
-import { aiTools } from "@/data/aiTools";
-import { Search, Sparkles } from "lucide-react";
-import type { UseCaseSearchResponse } from "@shared/api";
+import { UseCaseAnalysisDisplay } from "@/components/UseCaseAnalysis";
+import { Sparkles } from "lucide-react";
+import type { GenerateUseCaseAnalysisResponse } from "@shared/api";
 
 // Categories - can be extracted from API if needed
 const categories = [
@@ -21,7 +17,6 @@ export default function UseCaseFinder() {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -33,62 +28,42 @@ export default function UseCaseFinder() {
     }
   }, []);
 
-  // Fetch all use cases for initial display
-  const { data: allUseCasesData } = useQuery({
-    queryKey: ["useCases"],
+  // AI Analysis query - generates new use case analysis from idea
+  const { data: analysisData, isLoading: isAnalyzing, error: analysisError } = useQuery<GenerateUseCaseAnalysisResponse>({
+    queryKey: ["useCaseAnalysis", searchQuery],
     queryFn: async () => {
-      const response = await fetch("/api/use-cases");
-      if (!response.ok) throw new Error("Failed to fetch use cases");
-      return response.json();
-    },
-    staleTime: 300000, // Cache for 5 minutes
-  });
-
-  // Semantic search query
-  const { data: searchResults, isLoading: isSearching } = useQuery<UseCaseSearchResponse>({
-    queryKey: ["useCaseSearch", searchQuery, selected],
-    queryFn: async () => {
-      const cats = Array.from(new Set(selected));
-      const response = await fetch("/api/use-cases/search", {
+      const response = await fetch("/api/use-cases/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          query: searchQuery,
-          categories: cats.length > 0 ? cats : undefined,
-          limit: 20,
+          idea: searchQuery,
         }),
       });
-      if (!response.ok) throw new Error("Search failed");
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: "Analysis failed" }));
+        throw new Error(error.message || error.error || "Analysis failed");
+      }
       return response.json();
     },
-    enabled: hasSearched,
-    staleTime: 60000, // Cache for 1 minute
+    enabled: hasSearched && searchQuery.trim().length > 0,
+    staleTime: 0, // Don't cache AI-generated content
+    retry: 1, // Only retry once on failure
   });
 
   const resultsRef = useRef<HTMLDivElement>(null);
+  const isLoading = hasSearched && isAnalyzing;
+  const hasAnalysis = !!analysisData?.analysis;
 
   const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
-    // Always trigger search when button is clicked, even with empty query
+    if (query.trim().length === 0) return;
     setSearchQuery(query.trim());
     setHasSearched(true);
-    setShowSuggestions(false);
-    // Scroll to results after a short delay to allow state update
-    setTimeout(() => {
-      resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 100);
+    setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
   }, [query]);
-
-  const handleSuggestionSelect = useCallback((selectedQuery: string) => {
-    setQuery(selectedQuery);
-    setSearchQuery(selectedQuery);
-    setHasSearched(true);
-    setShowSuggestions(false);
-  }, []);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setQuery(e.target.value);
-    setShowSuggestions(true);
     if (e.target.value.trim().length === 0) {
       setHasSearched(false);
       setSearchQuery("");
@@ -96,17 +71,16 @@ export default function UseCaseFinder() {
   }, []);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Escape") {
-      setShowSuggestions(false);
+    // Enter (without Shift) triggers search
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (query.trim().length > 0 && !isLoading) {
+        setSearchQuery(query.trim());
+        setHasSearched(true);
+        setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
+      }
     }
-  }, []);
-
-  // Determine what to display
-  const displayResults = hasSearched && searchResults
-    ? searchResults.results
-    : allUseCasesData?.useCases || [];
-
-  const isLoading = hasSearched && isSearching;
+  }, [query, isLoading]);
 
   return (
     <div className="min-h-screen bg-white">
@@ -116,12 +90,12 @@ export default function UseCaseFinder() {
             Use Case Explorer
           </h1>
           <p className="mt-2 text-base font-semibold text-[#B3A369]">
-            Discover intelligent solutions with semantic search
+            Transform your ideas into structured use case analyses with AI
           </p>
-          {searchResults?.semanticSearch && (
+          {hasAnalysis && (
             <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-[#B3A369]/10 px-3 py-1 text-sm text-[#003057]">
               <Sparkles className="h-4 w-4 text-[#B3A369]" />
-              <span>Semantic search enabled</span>
+              <span>AI Analysis Generated</span>
             </div>
           )}
         </div>
@@ -132,28 +106,17 @@ export default function UseCaseFinder() {
               <label className="mb-2 block text-sm font-bold text-[#003057]">
                 Describe your project or requirement
               </label>
-              <div className="relative">
-                <textarea
-                  ref={textareaRef}
-                  value={query}
-                  onChange={handleInputChange}
-                  onKeyDown={handleKeyDown}
-                  onFocus={() => query.length > 0 && setShowSuggestions(true)}
-                  placeholder="e.g., 'increase customer retention' or 'boost user engagement' or 'customer onboarding flow'..."
-                  rows={4}
-                  className="w-full resize-y rounded-md border border-[#003057]/20 bg-white px-3 py-2 text-sm text-[#003057] outline-none transition-shadow focus:ring-2 focus:ring-[#B3A369]"
-                />
-                {showSuggestions && (
-                  <SearchSuggestions
-                    query={query}
-                    onSelect={handleSuggestionSelect}
-                    onClose={() => setShowSuggestions(false)}
-                    isOpen={showSuggestions}
-                  />
-                )}
-              </div>
+              <textarea
+                ref={textareaRef}
+                value={query}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                placeholder="e.g., 'increase customer retention' or 'boost user engagement' or 'customer onboarding flow'..."
+                rows={4}
+                className="w-full resize-y rounded-md border border-[#003057]/20 bg-white px-3 py-2 text-sm text-[#003057] outline-none transition-shadow focus:ring-2 focus:ring-[#B3A369]"
+              />
               <p className="mt-2 text-xs text-[#003057]/60">
-                Try semantic searches like: "customer onboarding flow", "boost user engagement", "increase retention"
+                Describe your idea and press <kbd className="rounded border border-[#003057]/30 px-1.5 py-0.5 font-mono text-[10px]">Enter</kbd> to generate an AI analysis. Use Shift+Enter for a new line.
               </p>
             </div>
 
@@ -189,19 +152,20 @@ export default function UseCaseFinder() {
 
             <div className="flex items-center justify-between">
               <div className="text-sm text-[#003057]/70">
-                {hasSearched && searchResults && (
-                  <span>
-                    Found {searchResults.total} result{searchResults.total !== 1 ? "s" : ""}
+                {hasAnalysis && (
+                  <span className="inline-flex items-center gap-1">
+                    <Sparkles className="h-3 w-3 text-[#B3A369]" />
+                    Analysis ready
                   </span>
                 )}
               </div>
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || query.trim().length === 0}
                 className="inline-flex items-center gap-2 rounded-md bg-[#003057] px-4 py-2 text-sm font-semibold text-[#B3A369] shadow-sm transition-colors hover:bg-[#022d52] disabled:opacity-50"
               >
-                <Search className="h-4 w-4" />
-                {isLoading ? "Searching..." : "Find Solutions"}
+                <Sparkles className="h-4 w-4" />
+                {isLoading ? "Generating Analysis..." : "Generate Analysis"}
               </button>
             </div>
           </form>
@@ -209,7 +173,7 @@ export default function UseCaseFinder() {
 
         <div ref={resultsRef} className="mt-10">
           {isLoading ? (
-            <div className="flex items-center justify-center py-24">
+            <div className="flex flex-col items-center justify-center py-24">
               <svg className="h-8 w-8 animate-spin text-[#B3A369]" viewBox="0 0 24 24">
                 <circle
                   className="opacity-25"
@@ -226,34 +190,31 @@ export default function UseCaseFinder() {
                   d="M4 12a8 8 0 0116 0h-2a6 6 0 10-6 6v2A8 8 0 014 12z"
                 />
               </svg>
-            </div>
-          ) : displayResults.length > 0 ? (
-            <section>
-              <header className="mb-6">
-                <h2 className="text-xl font-extrabold text-[#003057]">
-                  {hasSearched ? "Search Results" : "All Use Cases"}
-                </h2>
-                <p className="text-sm text-[#003057]/70">
-                  {hasSearched
-                    ? "Matching use cases based on your search"
-                    : "Browse all available use cases"}
-                </p>
-              </header>
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                {displayResults.map((uc) => (
-                  <UseCaseCard key={uc.id} useCase={uc} />
-                ))}
-              </div>
-            </section>
-          ) : (
-            <div className="rounded-xl border border-[#003057]/15 bg-white p-6 text-center text-[#003057] shadow-sm">
-              <p className="mb-2 text-lg font-extrabold">No results found</p>
-              <p className="text-sm text-[#003057]/70">
-                {hasSearched
-                  ? "Try adjusting your search query or categories."
-                  : "No use cases available at the moment."}
+              <p className="mt-4 text-sm text-[#003057]/70">
+                Generating AI analysis of your idea...
               </p>
             </div>
+          ) : hasAnalysis && analysisData ? (
+            <UseCaseAnalysisDisplay analysis={analysisData.analysis} idea={searchQuery} />
+          ) : hasSearched && !hasAnalysis ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-[#003057] shadow-sm">
+              <p className="mb-2 text-lg font-extrabold text-red-900">Analysis Failed</p>
+              <p className="text-sm text-red-800">
+                {analysisError?.message || "Unable to generate analysis. Please check your OpenAI API key is configured and try again."}
+              </p>
+              {(!analysisError?.message?.includes("OPENAI") && !analysisError?.message?.includes("API key")) ? null : (
+                <p className="mt-3 text-xs text-red-700">
+                  Add <code className="rounded bg-red-100 px-1 py-0.5 font-mono">OPENAI_API_KEY</code> to a <code className="rounded bg-red-100 px-1 py-0.5 font-mono">.env</code> file in the project root (see <code className="rounded bg-red-100 px-1 py-0.5 font-mono">.env.example</code>).
+                </p>
+              )}
+            </div>
+          ) : (
+            <section className="rounded-xl border border-[#003057]/15 bg-[#F7F9FC] p-12 text-center">
+              <p className="text-lg font-semibold text-[#003057]">Enter your idea above</p>
+              <p className="mt-2 text-sm text-[#003057]/70">
+                Press <kbd className="rounded border border-[#003057]/30 px-2 py-1 font-mono text-xs">Enter</kbd> to generate an AI analysis with similar existing solutions
+              </p>
+            </section>
           )}
         </div>
       </div>

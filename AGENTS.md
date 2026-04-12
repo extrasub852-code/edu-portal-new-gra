@@ -94,8 +94,20 @@ pnpm dev        # Start dev server (client + server)
 pnpm build      # Production build
 pnpm start      # Start production server
 pnpm typecheck  # TypeScript validation
-pnpm test          # Run Vitest tests
+pnpm test       # Run Vitest tests
 ```
+
+### LinkedIn Learning Course Updater
+
+The Courses page shows recommended AI courses from LinkedIn Learning per division. To update course data:
+
+```bash
+pnpm run update-courses              # Use built-in seed (no API key)
+pnpm run update-courses --dry-run    # Preview changes without writing
+pnpm run update-courses --fetch      # Search + fetch titles (requires API key)
+```
+
+**Optional search API** (for `--fetch`): Add `SERPAPI_KEY` or `BING_SEARCH_KEY` to `.env`. See `scripts/update-courses/README.md` for details. Without a key, the script uses curated seed data.
 
 ## Adding Features
 

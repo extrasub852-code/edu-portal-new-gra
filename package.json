@@ -17,13 +17,17 @@
     "build:server": "vite build --config vite.config.server.ts",
     "start": "node dist/server/node-build.mjs",
     "test": "vitest --run",
+    "update-courses": "tsx scripts/update-courses/index.ts",
     "format.fix": "prettier --write .",
     "typecheck": "tsc"
   },
   "dependencies": {
     "better-sqlite3": "^11.7.0",
+    "express-session": "^1.18.0",
+    "node-cas-authentication": "^0.0.15",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
+    "openai": "^4.76.1",
     "zod": "^3.25.76"
   },
   "devDependencies": {

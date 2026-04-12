@@ -144,3 +144,55 @@ export interface UseCaseSuggestionsResponse {
   suggestions: (UseCase & { score: number })[];
   query: string;
 }
+
+/**
+ * One recommended AI tool with a copy-paste prompt for the user's idea.
+ */
+export interface RecommendedAITool {
+  tool_name: string;
+  description?: string;
+  prompt: string;
+  /** URL to open the tool (e.g. https://chat.openai.com) */
+  link?: string;
+}
+
+/**
+ * Use Case Analysis generated from user's idea via AI.
+ * This matches the schema used by the Individual Solution page.
+ */
+export interface UseCaseAnalysis {
+  idea_summary: string;
+  problem_statement: string;
+  target_users: string[];
+  benefits: string[];
+  key_features: string[];
+  tech_stack: string[];
+  similar_existing_solutions: UseCaseDetail[];
+  risk_factors: string[];
+  suggested_next_steps: string[];
+  /** AI tools to implement the idea, with copy-paste prompts. */
+  recommended_ai_tools?: RecommendedAITool[];
+}
+
+/**
+ * Request to generate a use case analysis from an idea.
+ */
+export interface GenerateUseCaseAnalysisRequest {
+  idea: string;
+}
+
+/**
+ * Response containing the generated use case analysis.
+ */
+export interface GenerateUseCaseAnalysisResponse {
+  analysis: UseCaseAnalysis;
+}
+
+/**
+ * Auth status from /api/auth/me (GT SSO).
+ */
+export interface AuthMeResponse {
+  loggedIn: boolean;
+  user: string | null;
+  userInfo: Record<string, unknown> | null;
+}

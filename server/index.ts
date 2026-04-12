@@ -1,5 +1,11 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+import path from "path";
+
+// Load .env from project root so OPENAI_API_KEY is available in dev and production
+dotenv.config({ path: path.resolve(process.cwd(), ".env") });
+
 import express from "express";
+import session from "express-session";
 import cors from "cors";
 import { handleDemo } from "./routes/demo.js";
 import {
@@ -17,18 +23,34 @@ import {
   deleteUseCaseHandler,
   trackUseCaseAnalytics,
 } from "./routes/useCases.js";
-import { initDatabase } from "./db/index.js";
-
-// Initialize database on server startup
-initDatabase();
-
+import { generateUseCaseAnalysis } from "./routes/useCaseAnalysis.js";
+import { login, logout, me } from "./routes/auth.js";
 export function createServer() {
   const app = express();
 
+  // Session (required for CAS SSO) - must be before auth routes
+  app.use(
+    session({
+      secret: process.env.SESSION_SECRET ?? "edu-portal-session-secret-change-in-prod",
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        secure: process.env.NODE_ENV === "production",
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000,
+      },
+    })
+  );
+
   // Middleware
-  app.use(cors());
+  app.use(cors({ origin: true, credentials: true }));
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
+
+  // Auth routes (GT SSO)
+  app.get("/api/auth/login", login);
+  app.get("/api/auth/logout", logout);
+  app.get("/api/auth/me", me);
 
   // Example API routes
   app.get("/api/ping", (_req, res) => {
@@ -55,6 +77,9 @@ export function createServer() {
   
   // Analytics route
   app.post("/api/use-cases/analytics", trackUseCaseAnalytics);
+  
+  // Use Case Analysis generation (AI-powered)
+  app.post("/api/use-cases/analyze", generateUseCaseAnalysis);
   
   // CRUD routes for use cases (placeholder)
   app.post("/api/use-cases", createUseCaseHandler);

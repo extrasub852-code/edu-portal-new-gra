@@ -14,6 +14,7 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "esModuleInterop": true,
+    "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
 
@@ -36,6 +37,7 @@
     "client/**/*",
     "server/**/*",
     "shared/**/*",
+    "scripts/**/*",
     "vite.config.ts",
     "vite.config.server.ts"
   ],

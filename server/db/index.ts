@@ -57,11 +57,11 @@ export function initDatabase(): Database.Database {
 }
 
 /**
- * Get the database instance (throws if not initialized)
+ * Get the database instance (lazy-initializes on first use)
  */
 export function getDatabase(): Database.Database {
   if (!db) {
-    throw new Error("Database not initialized. Call initDatabase() first.");
+    return initDatabase();
   }
   return db;
 }

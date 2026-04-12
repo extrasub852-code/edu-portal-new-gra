@@ -13,7 +13,7 @@ function getDataFilePath(): string {
   return fromDist;
 }
 
-function loadUseCases(): UseCaseDetail[] {
+export function loadUseCases(): UseCaseDetail[] {
   if (cachedUseCases) return cachedUseCases;
   const filePath = getDataFilePath();
   const raw = fs.readFileSync(filePath, "utf-8");
@@ -84,7 +84,7 @@ const intentSynonyms: Record<string, string[]> = {
 };
 
 // Extract intent keywords from query
-function extractIntentKeywords(query: string): string[] {
+export function extractIntentKeywords(query: string): string[] {
   const normalized = normalize(query);
   const keywords = new Set<string>();
   
@@ -110,7 +110,7 @@ function extractIntentKeywords(query: string): string[] {
 }
 
 // Calculate semantic similarity score
-function calculateSemanticScore(useCase: UseCaseDetail, query: string, intentKeywords: string[]): number {
+export function calculateSemanticScore(useCase: UseCaseDetail, query: string, intentKeywords: string[]): number {
   let score = 0;
   const normalizedQuery = normalize(query);
   const queryWords = normalizedQuery.split(" ").filter(w => w.length > 2);
