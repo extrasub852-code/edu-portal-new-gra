@@ -189,7 +189,7 @@ export interface GenerateUseCaseAnalysisResponse {
 }
 
 /**
- * Auth status from /api/auth/me (GT SSO).
+ * Auth status derived from Supabase session (client-side).
  */
 export interface AuthMeResponse {
   loggedIn: boolean;

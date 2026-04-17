@@ -1,35 +1,78 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import type { Session } from "@supabase/supabase-js";
 import type { AuthMeResponse } from "@shared/api";
+import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 
-const AUTH_ME_KEY = ["auth", "me"] as const;
+export const AUTH_SESSION_KEY = ["auth", "session"] as const;
+
+function sessionToResponse(session: Session | null): AuthMeResponse {
+  if (!session?.user) {
+    return { loggedIn: false, user: null, userInfo: null };
+  }
+  const u = session.user;
+  return {
+    loggedIn: true,
+    user: u.email ?? u.id,
+    userInfo: {
+      id: u.id,
+      email: u.email,
+      ...u.user_metadata,
+    },
+  };
+}
+
+async function fetchSession() {
+  if (!isSupabaseConfigured()) return null;
+  const supabase = getSupabase();
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  return data.session;
+}
 
 export function useAuth() {
-  const { data, isLoading, refetch } = useQuery<AuthMeResponse>({
-    queryKey: AUTH_ME_KEY,
-    queryFn: async () => {
-      const res = await fetch("/api/auth/me", { credentials: "include" });
-      return res.json();
-    },
-    staleTime: 60 * 1000,
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  const { data: session, isLoading } = useQuery({
+    queryKey: AUTH_SESSION_KEY,
+    queryFn: fetchSession,
+    staleTime: 30 * 1000,
   });
 
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+    const supabase = getSupabase();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      queryClient.invalidateQueries({ queryKey: AUTH_SESSION_KEY });
+    });
+    return () => subscription.unsubscribe();
+  }, [queryClient]);
+
+  const data = sessionToResponse(session ?? null);
+
   const login = (returnTo?: string) => {
-    const params = new URLSearchParams();
-    if (returnTo) params.set("returnTo", returnTo);
-    const qs = params.toString();
-    window.location.href = `/api/auth/login${qs ? `?${qs}` : ""}`;
+    const from = returnTo && returnTo !== "/login" ? returnTo : "/";
+    navigate("/login", { state: { from } });
   };
 
-  const logout = () => {
-    window.location.href = "/api/auth/logout";
+  const logout = async () => {
+    if (isSupabaseConfigured()) {
+      await getSupabase().auth.signOut();
+    }
+    queryClient.setQueryData(AUTH_SESSION_KEY, null);
+    await queryClient.invalidateQueries({ queryKey: AUTH_SESSION_KEY });
   };
 
   return {
-    user: data?.user ?? null,
-    loggedIn: !!data?.loggedIn,
-    userInfo: data?.userInfo ?? null,
+    user: data.user,
+    loggedIn: data.loggedIn,
+    userInfo: data.userInfo,
     isLoading,
-    refetch,
+    refetch: () => queryClient.invalidateQueries({ queryKey: AUTH_SESSION_KEY }),
     login,
     logout,
   };

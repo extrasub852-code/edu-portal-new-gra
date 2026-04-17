@@ -52,23 +52,34 @@ export function Header() {
             <>
               <span className="text-sm text-[#003057]/80">{user}</span>
               <button
-                onClick={() => logout()}
+                type="button"
+                onClick={() => void logout()}
                 className="rounded-md bg-[#003057] px-4 py-2 text-sm font-semibold text-[#B3A369] transition-colors hover:bg-[#003057]/90"
               >
-                Logout
+                Log out
               </button>
             </>
           ) : (
-            <button
-              onClick={() => login(pathname === "/login" ? "/" : pathname)}
-              className="rounded-md bg-[#B3A369] px-4 py-2 text-sm font-semibold text-[#003057] shadow-sm transition-colors hover:bg-[#a4945c]"
-            >
-              Login with GT SSO
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => login(pathname === "/login" ? "/" : pathname)}
+                className="rounded-md px-4 py-2 text-sm font-semibold text-[#003057] transition-colors hover:bg-[#003057]/5"
+              >
+                Log in
+              </button>
+              <Link
+                to="/signup"
+                className="rounded-md bg-[#B3A369] px-4 py-2 text-sm font-semibold text-[#003057] shadow-sm transition-colors hover:bg-[#a4945c]"
+              >
+                Sign up
+              </Link>
+            </>
           )}
         </div>
 
         <button
+          type="button"
           className="inline-flex items-center justify-center rounded-md p-2 text-[#003057] md:hidden"
           onClick={() => setOpen((v) => !v)}
           aria-label="Toggle navigation"
@@ -96,27 +107,38 @@ export function Header() {
                 </NavLink>
               ))}
             </div>
-            <div className="mt-3 flex items-center gap-3">
+            <div className="mt-3 flex flex-wrap items-center gap-3">
               {loggedIn ? (
                 <>
                   <span className="text-sm text-[#003057]/80">{user}</span>
                   <button
-                    onClick={() => logout()}
+                    type="button"
+                    onClick={() => void logout()}
                     className="rounded-md bg-[#003057] px-3 py-2 text-sm font-semibold text-[#B3A369]"
                   >
-                    Logout
+                    Log out
                   </button>
                 </>
               ) : (
-                <button
-                  onClick={() => {
-                    setOpen(false);
-                    login(pathname === "/login" ? "/" : pathname);
-                  }}
-                  className="rounded-md bg-[#B3A369] px-3 py-2 text-sm font-semibold text-[#003057]"
-                >
-                  Login with GT SSO
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      login(pathname === "/login" ? "/" : pathname);
+                    }}
+                    className="rounded-md px-3 py-2 text-sm font-semibold text-[#003057]"
+                  >
+                    Log in
+                  </button>
+                  <Link
+                    to="/signup"
+                    onClick={() => setOpen(false)}
+                    className="rounded-md bg-[#B3A369] px-3 py-2 text-sm font-semibold text-[#003057]"
+                  >
+                    Sign up
+                  </Link>
+                </>
               )}
             </div>
           </nav>

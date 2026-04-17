@@ -5,7 +5,6 @@ import path from "path";
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
 import express from "express";
-import session from "express-session";
 import cors from "cors";
 import { handleDemo } from "./routes/demo.js";
 import {
@@ -24,33 +23,14 @@ import {
   trackUseCaseAnalytics,
 } from "./routes/useCases.js";
 import { generateUseCaseAnalysis } from "./routes/useCaseAnalysis.js";
-import { login, logout, me } from "./routes/auth.js";
+
 export function createServer() {
   const app = express();
-
-  // Session (required for CAS SSO) - must be before auth routes
-  app.use(
-    session({
-      secret: process.env.SESSION_SECRET ?? "edu-portal-session-secret-change-in-prod",
-      resave: false,
-      saveUninitialized: false,
-      cookie: {
-        secure: process.env.NODE_ENV === "production",
-        httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000,
-      },
-    })
-  );
 
   // Middleware
   app.use(cors({ origin: true, credentials: true }));
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
-
-  // Auth routes (GT SSO)
-  app.get("/api/auth/login", login);
-  app.get("/api/auth/logout", logout);
-  app.get("/api/auth/me", me);
 
   // Example API routes
   app.get("/api/ping", (_req, res) => {
