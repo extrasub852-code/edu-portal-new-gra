@@ -3,5 +3,8 @@
   "buildCommand": "pnpm run build",
   "outputDirectory": "dist/spa",
   "installCommand": "pnpm install",
-  "rewrites": [{ "source": "/api/(.*)", "destination": "/api" }]
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
