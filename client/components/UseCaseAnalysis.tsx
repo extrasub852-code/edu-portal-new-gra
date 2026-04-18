@@ -16,6 +16,8 @@ const AI_TOOL_LINKS: Record<string, string> = {
   "Perplexity": "https://perplexity.ai",
   "Gemini": "https://gemini.google.com",
   "Google AI": "https://gemini.google.com",
+  "Midjourney": "https://www.midjourney.com",
+  "Runway": "https://runwayml.com",
 };
 
 function getToolLink(tool: RecommendedAITool): string | undefined {
@@ -49,7 +51,7 @@ export function UseCaseAnalysisDisplay({ analysis, idea }: UseCaseAnalysisProps)
             <h3 className="text-xl font-extrabold text-[#003057]">AI tools to implement this idea</h3>
           </div>
           <p className="mb-4 text-sm text-[#003057]/80">
-            Use these tools and copy-paste the prompts below to get started.
+            Each prompt is engineered for that product (role, context, constraints, deliverable format) and tied to your idea above—not a one-size-fits-all template.
           </p>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {analysis.recommended_ai_tools.map((tool, index) => {

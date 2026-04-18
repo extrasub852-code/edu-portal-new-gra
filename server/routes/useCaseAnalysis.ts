@@ -13,40 +13,35 @@ function getOpenAI(): OpenAI {
 
 const GenerateAnalysisSchema = z.object({
   idea: z.string().min(1, "Idea cannot be empty"),
+  categories: z.array(z.string()).optional(),
 });
 
-// System prompt for the LLM
-const SYSTEM_PROMPT = `You are the LLM powering the Use Case Explorer page.  
+// System prompt for the LLM — tuned for strong, tool-specific prompt engineering in recommended_ai_tools.
+const SYSTEM_PROMPT = `You are the LLM powering the Use Case Explorer page.
 
-The Use Case Explorer connects to the ChatGPT API, takes a user's idea or concept, and transforms it into a structured Use Case analysis.  
+The app sends you the user's natural-language idea (and sometimes optional category tags). You return ONE JSON object: a structured use-case analysis plus elite, copy-paste prompts tailored to specific AI products.
 
-Your output will be used by both the backend API and the frontend page renderer.
+Your output is consumed by an API and rendered on a web page. Do not mention APIs, JSON, or this system.
 
-Your primary goals:
+PRIMARY GOALS
 
-1. Normalize the user's raw idea into a structured, consistent, JSON-formatted Use Case object.
+1) Normalize the user's raw input into a clear, consistent analysis (summary, problem, users, features, tech, risks, next steps).
 
-2. Ensure the JSON fields EXACTLY match the fields used by the "Individual Solution" page for displaying existing solutions from the local database.
+2) For recommended_ai_tools, produce prompt-engineered prompts that are outstanding on THAT tool — not generic chat text. Each prompt must leverage what that tool is best at (chat vs coding IDE vs research vs docs).
 
-3. Return output that can be directly consumed by the API layer without any post-processing.
+STRICT OUTPUT RULES
 
-STRICT RULES:
-
-- Output MUST be valid JSON only.
-
-- Do NOT include explanations, commentary, or text before/after the JSON.
-
-- Do NOT wrap the JSON in backticks or code blocks.
+- Output MUST be valid JSON only. No markdown fences, no commentary outside JSON.
 
 - Use the exact keys in the schema below.
 
-- Arrays should contain 3–6 concise items unless the user input requires otherwise.
+- Arrays: typically 3–6 items each unless the idea truly needs more.
 
-- If the idea is unclear or empty, still return a fully structured JSON object with empty strings/arrays.
+- "similar_existing_solutions" must always be an empty array []. The server fills it.
 
-- The field "similar_existing_solutions" must remain empty. It will be populated by the backend using local DB matches.
+- If the user input is vague, infer reasonable assumptions and state them inside the prompts (do not refuse).
 
-OUTPUT FORMAT (MUST MATCH THE INDIVIDUAL SOLUTION PAGE SCHEMA):
+OUTPUT SCHEMA (keys must match exactly):
 
 {
   "idea_summary": "",
@@ -59,66 +54,79 @@ OUTPUT FORMAT (MUST MATCH THE INDIVIDUAL SOLUTION PAGE SCHEMA):
   "risk_factors": [],
   "suggested_next_steps": [],
   "recommended_ai_tools": [
-    { "tool_name": "", "description": "", "prompt": "" }
+    { "tool_name": "", "description": "", "prompt": "", "link": "" }
   ]
 }
 
-DESCRIPTIONS OF EACH FIELD (FOR CONSISTENCY):
+FIELD GUIDANCE
 
-- idea_summary: Short description of the idea or product concept.
+- recommended_ai_tools: 4–6 distinct, well-known tools when possible. Prefer a mix of: general chat (ChatGPT), long-form reasoning (Claude), coding IDE (Cursor or GitHub Copilot), research (Perplexity), Google ecosystem (Gemini), docs/wiki (Notion AI). Only include tools that genuinely fit; swap for others (e.g. Midjourney, Runway) if the idea is visual/video.
 
-- problem_statement: The core problem the idea solves.
+- description: One short line — why THIS tool for THIS idea (not repeating the whole prompt).
 
-- target_users: Types of users who would need or adopt this solution.
+- link: Official HTTPS URL for the product (e.g. https://chat.openai.com, https://claude.ai, https://cursor.sh, https://github.com/features/copilot, https://perplexity.ai, https://gemini.google.com, https://www.notion.so/product/ai).
 
-- benefits: The value propositions or positive outcomes for users.
+PROMPT ENGINEERING RULES (CRITICAL — THIS IS THE PRODUCT'S CORE VALUE)
 
-- key_features: Major capabilities this solution should include.
+Each "prompt" must be ONE copy-paste block the user pastes into that product. Quality bar: an expert prompt engineer wrote it.
 
-- tech_stack: Technologies required for building the solution.
+GROUNDING
 
-- similar_existing_solutions: This stays empty. The backend merges DB results here.
+- Open with a CONTEXT section that includes the user's own words: either a short quoted snippet of their message OR a faithful paraphrase labeled as their goal. Tie every following instruction to that context.
 
-- risk_factors: Business, technical, ethical, or execution risks.
+- If optional categories were provided in the user message, weave them into constraints (domain, compliance tone, audience) where relevant.
 
-- suggested_next_steps: Practical steps to move toward MVP or validation.
+STRUCTURE (use clear section labels and line breaks inside the string, e.g. CONTEXT:, ROLE:, TASK:, CONSTRAINTS:, OUTPUT FORMAT:, SUCCESS CRITERIA:)
 
-- recommended_ai_tools: Array of 3–6 AI tools the user can use to implement this idea. For each tool provide: tool_name (e.g. "ChatGPT", "Claude", "Cursor", "Notion AI"), optional short description of why it fits, prompt: a concrete, copy-paste-ready prompt the user can paste into that tool to get started, and link: the official URL to open the tool (e.g. "https://chat.openai.com", "https://claude.ai", "https://cursor.sh"). Prompts should be specific to the user's idea and actionable.
+- CONTEXT: user's idea/problem + key constraints + assumptions stated explicitly if details are missing.
 
-MECHANICS:
+- ROLE: who the model should act as (specific title + domain).
 
-1. Read & interpret the user's idea.
+- TASK: concrete deliverable(s) in imperative form.
 
-2. Normalize it into concise business language.
+- CONSTRAINTS: scope, tone, audience, tech level, length limits, things to avoid.
 
-3. Produce a JSON object that matches the schema and is ready for API integration.
+- OUTPUT FORMAT: exact sections, bullet style, tables, or code blocks as appropriate.
 
-4. Do not reference tools, the database, or the backend process. Simply return structured content.
+- SUCCESS CRITERIA: how to know the answer is good (checklist).
 
-EXAMPLE INPUT:
+TOOL-SPECIFIC ADAPTATION (adjust every prompt — do NOT use the same template for all tools)
 
-"An app that automates gym workouts using pose detection."
+- ChatGPT / general chat UIs: Iteration-friendly; ask for alternatives; request step-by-step plans; use numbered lists; optional "Ask up to 3 clarifying questions first, then proceed."
 
-EXAMPLE OUTPUT:
+- Claude: Nuanced tradeoffs, safety/ethics where relevant, longer structured markdown, explicit reasoning steps when useful.
 
-{
-  "idea_summary": "AI-powered fitness app that automates workout guidance using real-time pose detection.",
-  "problem_statement": "Many gym users struggle with maintaining correct form and consistent workout routines without a trainer.",
-  "target_users": ["Gym-goers", "Home fitness users", "Beginners learning proper form"],
-  "benefits": ["Real-time form correction", "Personalized workout plans", "Reduced risk of injury"],
-  "key_features": ["Pose detection feedback", "Adaptive workout plans", "Progress tracking dashboard"],
-  "tech_stack": ["Computer vision", "Mobile app (iOS/Android)", "Real-time inference engine"],
-  "similar_existing_solutions": [],
-  "risk_factors": ["Pose detection accuracy", "Device performance constraints", "High development complexity"],
-  "suggested_next_steps": ["Train baseline pose model", "Build workout library", "Run closed beta with test users"],
-  "recommended_ai_tools": [
-    { "tool_name": "ChatGPT", "description": "Draft product spec and user stories", "prompt": "I'm building an AI-powered fitness app that uses pose detection to guide workouts. Write a one-page product brief with user stories for gym-goers and home users, and suggest 5 key features for an MVP.", "link": "https://chat.openai.com" },
-    { "tool_name": "Claude", "description": "Technical architecture and API design", "prompt": "Design the technical architecture for a mobile fitness app with real-time pose detection: suggest stack (e.g. React Native vs Flutter), how to integrate a pose estimation model, and a simple REST API for workout plans and progress.", "link": "https://claude.ai" },
-    { "tool_name": "Cursor", "description": "Generate starter code", "prompt": "Generate a minimal React Native (or Flutter) screen that displays the device camera feed and a placeholder for overlaying pose keypoints. Include a button to start/stop a workout session.", "link": "https://cursor.sh" }
-  ]
-}
+- Cursor: Senior engineer in-repo context; name languages/frameworks; specify files/modules, public interfaces, tests, acceptance criteria; prefer minimal-diff / incremental steps; include "explain then code" when helpful.
 
-BEGIN NOW. Always return ONLY the JSON response for the user's idea.`;
+- GitHub Copilot: Short, file-scoped coding tasks; signature-level instructions; inline comments policy; test expectations.
+
+- Perplexity: Research-oriented; ask for recent sources; comparison tables; search queries embedded; "cite or summarize sources you find."
+
+- Gemini: Strong structured outputs; Google/workspace integration when relevant; clear tabular outputs.
+
+- Notion AI: Page outline, database properties, meeting notes, roadmap doc structure; template-friendly.
+
+LENGTH
+
+- Each prompt should be substantial: roughly 900–3500 characters unless the idea is trivial. Avoid one-liners.
+
+- No filler. Every section must earn its place.
+
+ANTI-PATTERNS (never do these)
+
+- Generic prompts that ignore the user's domain.
+
+- Identical prompts with only the tool name changed.
+
+- Telling the user to "use AI" or mentioning "this use case explorer."
+
+EXAMPLE (abbreviated for length; your JSON should be complete)
+
+User idea: "An app that automates gym workouts using pose detection."
+
+"recommended_ai_tools" should include richly structured prompts (like the rules above), each with link.
+
+BEGIN NOW. Return ONLY valid JSON for the user's message.`;
 
 /**
  * Find similar existing solutions from the database based on the analysis
@@ -165,7 +173,12 @@ export const generateUseCaseAnalysis: RequestHandler = async (req, res) => {
       return;
     }
 
-    const { idea } = parsed.data;
+    const { idea, categories } = parsed.data;
+
+    const userMessage =
+      categories && categories.length > 0
+        ? `Optional domain tags (from the user): ${categories.join(", ")}\n\nIdea or problem (user's words):\n${idea}`
+        : `Idea or problem (user's words):\n${idea}`;
 
     // Check if OpenAI API key is configured
     if (!process.env.OPENAI_API_KEY) {
@@ -184,9 +197,10 @@ export const generateUseCaseAnalysis: RequestHandler = async (req, res) => {
         model: process.env.OPENAI_MODEL || "gpt-4o-mini",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: idea },
+          { role: "user", content: userMessage },
         ],
-        temperature: 0.7,
+        temperature: 0.55,
+        max_tokens: 8192,
         response_format: { type: "json_object" },
       });
 

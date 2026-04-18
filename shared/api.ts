@@ -179,6 +179,8 @@ export interface UseCaseAnalysis {
  */
 export interface GenerateUseCaseAnalysisRequest {
   idea: string;
+  /** Optional filters the user picked on the finder UI (e.g. Education, Healthcare). */
+  categories?: string[];
 }
 
 /**
