@@ -30,13 +30,14 @@ export default function UseCaseFinder() {
 
   // AI Analysis query - generates new use case analysis from idea
   const { data: analysisData, isLoading: isAnalyzing, error: analysisError } = useQuery<GenerateUseCaseAnalysisResponse>({
-    queryKey: ["useCaseAnalysis", searchQuery],
+    queryKey: ["useCaseAnalysis", searchQuery, selected],
     queryFn: async () => {
       const response = await fetch("/api/use-cases/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           idea: searchQuery,
+          ...(selected.length > 0 ? { categories: selected } : {}),
         }),
       });
       if (!response.ok) {
