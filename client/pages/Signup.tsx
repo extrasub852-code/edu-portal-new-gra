@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { AUTH_SESSION_KEY } from "@/hooks/useAuth";
-import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
+import { getAuthSiteUrl, getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,9 +30,21 @@ export default function Signup() {
       toast.error("Password must be at least 8 characters");
       return;
     }
+    const siteUrl = getAuthSiteUrl();
+    if (!siteUrl) {
+      toast.error("Could not determine app URL for email confirmation.");
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const { data, error } = await getSupabase().auth.signUp({ email, password });
+      const { data, error } = await getSupabase().auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${siteUrl}/login`,
+        },
+      });
       if (error) {
         toast.error(error.message);
         return;

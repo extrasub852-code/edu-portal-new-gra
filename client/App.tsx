@@ -16,6 +16,7 @@ import About from "@/pages/About";
 import Contact from "@/pages/Contact";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -31,8 +32,10 @@ const App = () => (
             <Route path="/courses" element={<Courses />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
-            <Route path="/use-case-finder" element={<UseCaseFinder />} />
-            <Route path="/usecase/:slug" element={<UseCaseDetail />} />
+            <Route element={<ProtectedRoute />}>
+              <Route path="/use-case-finder" element={<UseCaseFinder />} />
+              <Route path="/usecase/:slug" element={<UseCaseDetail />} />
+            </Route>
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="*" element={<NotFound />} />
